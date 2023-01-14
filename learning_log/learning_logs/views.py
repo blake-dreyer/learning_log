@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
+from django.http import Http404
 
 from .models import Topic, Entry
 from .forms import TopicForm, EntryForm
@@ -33,7 +34,9 @@ def new_topic(request):
         #POST data submitted; process data.
         form = TopicForm(data=request.POST)
         if form.is_valid():
-            form.save()
+            new_topic = form.save(commit=False)
+            new_topic.owner = request.user
+            new_topic.save()
             return redirect('learning_logs:topics')
     #Display a blank or invalid form.
     context = {'form': form}
@@ -65,6 +68,8 @@ def edit_entry(request, entry_id):
     """Edit an existing entry for a particular topic"""
     entry = Entry.objects.get(id=entry_id)
     topic = entry.topic
+    if topic.owner != request.user:
+        raise Http404
 
     if request.method != 'POST':
         #Initial request; pre-fill form with current entry
